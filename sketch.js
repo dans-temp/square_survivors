@@ -1,10 +1,11 @@
 const game = {
-    wave: 1,
     baddies: [],
     player_bullets: [],
     baddie_bullets: [],
     debrees: [],
-    flash_timer: 5
+    flash_timer: 5,
+    wave_timer: 0,
+    super_duration: 0
 }
 
 const player = {
@@ -13,6 +14,8 @@ const player = {
     height: 30,
     width: 30,
     hp: 5,
+    max_hp: 5,
+    money: 0,
     move_speed: 1,
     attack_speed: 1,
     damage: 1,
@@ -20,62 +23,368 @@ const player = {
     dash_duration: 10,
     dash_cd: 0,
     dash_cd_timer: 100,
-    wave: 1,
+    wave: 3,
     invince: 0,
+    super: 0,
+    max_super: 10,
+    super_duration: 5,
     weapons: [
         {
-            name: 'smg',
-            firerate: 20,
+            name: "shot_gun",
+            firerate: 80,
             fireCD: 0,
             damage: 1,
             hp: 1,
             width: 5,
             height: 5,
-            move_speed: 8
+            move_speed: 7,
+            range: 15,
+            bullets_per_shot: 6
+        },
+        {
+            name: "smg",
+            firerate: 10,
+            fireCD: 0,
+            damage: 1,
+            hp: 1,
+            width: 5,
+            height: 5,
+            move_speed: 8,
+            range: 30,
+            bullets_per_shot: 1
+        },
+        {
+            name: "smg",
+            firerate: 10,
+            fireCD: 0,
+            damage: 1,
+            hp: 1,
+            width: 5,
+            height: 5,
+            move_speed: 8,
+            range: 30,
+            bullets_per_shot: 1
         }
     ]
 }
 
 const waves = [
     {
-        max_baddies: 5
-    }
+        max_baddies: 4,
+        timer: 20,
+        baddies: ['mini_square']
+    },
+    {
+        max_baddies: 6,
+        timer: 25,
+        baddies: ['mini_square', 'mini_square', 'mini_square', 'reg_square']
+    },
+    {
+        max_baddies: 8,
+        timer: 30,
+        baddies: ['mini_square', 'mini_square', 'mini_square', 'reg_square']
+    },
 ]
 
-const guns = {
-    name: 'smg',
-    firerate: 10,
-    fireCD: 0,
-    damage: 1,
-    hp: 1,
-    width: 5,
-    height: 5,
-    move_speed: 8
+const baddie_list = 
+{
+    mini_square: {
+        width: 20,
+        height: 20,
+        move_speed: 2,
+        hp: 3,
+        damage: 1,
+        money: 1
+    },
+    reg_square: {
+        width: 40,
+        height: 40,
+        move_speed: 1.5,
+        hp: 5,
+        damage: 1,
+        money: 2
+    }
+    
 }
 
-const baddies = 
-{
-    angle: 0
+const guns = {
+    smg: {
+        name: "smg",
+        firerate: 10,
+        fireCD: 0,
+        damage: 1,
+        hp: 1,
+        width: 5,
+        height: 5,
+        move_speed: 8,
+        range: 30,
+        bullets_per_shot: 1
+    },
+    shot_gun: {
+        name: "shot_gun",
+        firerate: 80,
+        fireCD: 0,
+        damage: 1,
+        hp: 1,
+        width: 5,
+        height: 5,
+        move_speed: 7,
+        range: 15,
+        bullets_per_shot: 6
+    }
 }
+
+const themes = [];
+const super_themes = [];
+let orbitRadius = 30;
+let angle = 0;
+let uiCanvas;
+let graident_changer = 0;
+
+let hit_sound;
+let death_sound;
+let font;
+
+
+const isPlaying = {
+    hit_sound: 0,
+    death_sound: 0,
+    death_small_sound: 0,
+    theme_playing_index: 0,
+}
+
+
 
 function preload()
 {
     //load all the audio files
+    themes.push( 
+        new Howl({
+			src: ['assets/music/theme_1.wav'],
+			volume: 0.12,
+            autoplay: false,
+            onend: function() {
+                playNextTheme();
+          }
+		}));
+
+    themes.push( 
+        new Howl({
+            src: ['assets/music/theme_2.wav'],
+            volume: 0.12,
+            autoplay: false,
+            onend: function() {
+                playNextTheme();
+          }
+        }));
+    
+    themes.push( 
+        new Howl({
+            src: ['assets/music/theme_3.wav'],
+            volume: 0.12,
+            autoplay: false,
+            onend: function() {
+                playNextTheme();
+            }
+        }));
+
+    themes.push( 
+        new Howl({
+            src: ['assets/music/theme_4.wav'],
+            volume: 0.12,
+            autoplay: false,
+            onend: function() {
+                playNextTheme();
+            }
+        }));
+
+    themes.push( 
+        new Howl({
+            src: ['assets/music/theme_5.wav'],
+            volume: 0.12,
+            autoplay: false,
+            onend: function() {
+                playNextTheme();
+            }
+        }));
+
+
+    super_themes.push( 
+        new Howl({
+            src: ['assets/music/super_theme_1.wav'],
+            volume: 0.12,
+            autoplay: false,
+            onend: function() {
+                playNextTheme();
+            }
+        }));
+
+    super_themes.push( 
+        new Howl({
+            src: ['assets/music/super_theme_2.wav'],
+            volume: 0.12,
+            autoplay: false,
+            onend: function() {
+                playNextTheme();
+            }
+        }));
+    
+    super_themes.push( 
+        new Howl({
+            src: ['assets/music/super_theme_3.wav'],
+            volume: 0.12,
+            autoplay: false,
+            onend: function() {
+                playNextTheme();
+            }
+        }));
+
+    super_themes.push( 
+        new Howl({
+            src: ['assets/music/super_theme_4.wav'],
+            volume: 0.12,
+
+            autoplay: false,
+            onend: function() {
+                playNextTheme();
+            }
+        }));
+
+    super_themes.push( 
+        new Howl({
+            src: ['assets/music/super_theme_5.wav'],
+            volume: 0.12,
+            autoplay: false,
+            onend: function() {
+                playNextTheme();
+            }
+        }));
+
+    hit_sound = new Howl({
+        src: ['assets/soundfx/hit.wav'],
+        volume: 0.5,
+        onend: function() {
+            isPlaying.hit_sound --;  
+      }
+    });
+
+    death_sound = new Howl({
+        src: ['assets/soundfx/death_big.wav'],
+        volume: 0.8,
+        onend: function() {
+            isPlaying.death_sound --;  
+      }
+    });
+
+    death_small_sound = new Howl({
+        src: ['assets/soundfx/death_small.wav'],
+        volume: 0.8,
+        onend: function() {
+            isPlaying.death_small_sound --;  
+      }
+    });
+
     player.x = windowWidth/2;
     player.y = windowHeight/2;
+
+    // font = loadFont('/Bungee-Regular.ttf');
+    
 }
 
 function setup()
 {
 	createCanvas(windowWidth, windowHeight);
+    uiCanvas = createGraphics(windowWidth, 50);
 	rectMode(CENTER);
+    game.wave_timer = waves[player.wave -1].timer;
+    // textFont(font);
+    setTimeout(startTheme, 1000);
+    setInterval(updateWaveTimer, 1000);    
+    
 }
 
 
 function draw()
 {
+    
+    // Draw the health bar in the UI canvas
+    uiCanvas.background(50);
+    uiCanvas.noStroke();
 
-    background(255);
+    uiCanvas.fill(100, 0, 0);
+    uiCanvas.rect(50, 10, 300, uiCanvas.height - 20);
+
+    uiCanvas.fill(255, 0, 0); // Red color for health bar
+    uiCanvas.rect(55, 15, 290 * (player.hp/player.max_hp), uiCanvas.height - 30);
+
+    uiCanvas.textSize(20);
+    uiCanvas.textAlign(CENTER, CENTER);
+    uiCanvas.fill(255); 
+    uiCanvas.text("HP: " + player.hp, 200, 25);
+
+    //ui for the wave timer
+    uiCanvas.textSize(20);
+    uiCanvas.textAlign(CENTER, CENTER);
+    uiCanvas.fill(255); 
+    uiCanvas.text("Wave " + player.wave + " Timer: " + game.wave_timer + "                       " +
+    "Money: " + player.money, uiCanvas.width / 2, uiCanvas.height / 2);
+
+    //super bar
+    uiCanvas.fill(0, 25, 75);
+    uiCanvas.rect(uiCanvas.width - 350, 10, 300, uiCanvas.height - 20);
+
+    //graident for when super is full
+    if(player.super === player.max_super)
+    {
+        graident_changer ++;
+        if (graident_changer > 255)
+        {
+            graident_changer = 0;
+        }
+        const gradientX = uiCanvas.width - 345;
+        const gradientY = 15;
+        const gradientWidth = 290;
+        const gradientHeight = uiCanvas.height - 30;
+      
+        const startColor = color(0+graident_changer, 75, 200-graident_changer); // Blue color for the start of the gradient
+        const endColor = color(255-graident_changer, 0+graident_changer, 0); // Red color for the end of the gradient
+      
+        // Loop through the gradient horizontally and interpolate colors
+        for (let x = gradientX; x < gradientX + gradientWidth; x++) {
+          const inter = map(x, gradientX, gradientX + gradientWidth, 0, 1);
+          const c = lerpColor(startColor, endColor, inter);
+          uiCanvas.stroke(c);
+          uiCanvas.line(x, gradientY, x, gradientY + gradientHeight);
+        }
+
+        uiCanvas.textAlign(CENTER, CENTER);
+        uiCanvas.fill(255);
+        uiCanvas.text("Press SPACE to Super", uiCanvas.width - 200, 25);
+    }
+    else if (game.super_duration > 0)
+    {
+        uiCanvas.fill(255); 
+        uiCanvas.text("Super Duration: " + game.super_duration, uiCanvas.width - 200, 25);
+    }
+    else
+    {
+        uiCanvas.fill(0, 75, 200); // Blue color for super bar
+        uiCanvas.rect(uiCanvas.width - 345, 15, 290 * (player.super/player.max_super), uiCanvas.height - 30);
+    
+        uiCanvas.textAlign(CENTER, CENTER);
+        uiCanvas.fill(255); 
+        uiCanvas.text("Super: " + Math.floor((player.super/player.max_super)* 100) + "%", uiCanvas.width - 200, 25);
+    }
+    
+    if(game.super_duration > 0)
+    {
+        background(0, 0, 0, 25);
+    }
+    else
+    {
+        background(255, 255, 255);
+    }
+
     if(game.baddies.length < waves[player.wave - 1].max_baddies)
     {
         spawnBaddie();
@@ -84,7 +393,10 @@ function draw()
     drawBaddies();
     drawPlayer();
     fireGuns();
+    drawGuns();
     drawBullets();
+    // Draw the UI canvas at the top of the main canvas
+    image(uiCanvas, 0, 0);
 }
 
 
@@ -121,7 +433,17 @@ function drawPlayer()
         moveY /= magnitude;
     }
 
-    if (keyIsDown(32) && player.dash_cd === 0)
+    //spacebar is down
+    if (keyIsDown(32) && player.super === player.max_super)
+    {
+        player.super = 0;
+        game.super_duration += player.super_duration;
+        player.attack_speed *= 2;
+        player.damage *= 2;
+        player.move_speed *= 2;
+        switchToSuperSong(themes[isPlaying.theme_playing_index], super_themes[isPlaying.theme_playing_index])
+    }
+    if (keyIsDown(32) && player.dash_cd === 0 && game.super_duration === 0)
     {
         player.dash = player.dash_duration;
         player.dash_cd = player.dash_cd_timer;
@@ -133,7 +455,7 @@ function drawPlayer()
         moveY = moveY * 6;
         moveX = moveX * 6;
         player.dash --;
-        player.height -= 6;
+        player.height -= 4;
     }
 
     if (player.dash_cd > 0)
@@ -141,7 +463,7 @@ function drawPlayer()
         player.dash_cd --;
         if(player.height !== player.width)
         {
-            player.height += 3;
+            player.height += 2;
         }
     }
 
@@ -150,11 +472,11 @@ function drawPlayer()
     const next_y =  player.y + (moveY * 3*player.move_speed);
     
 
-    if(next_x > 0 && next_x < windowWidth)
+    if(next_x - player.width/2 > 0 && next_x + player.width/2 < windowWidth)
     {
         player.x += moveX * 3*player.move_speed; 
     }
-    if(next_y > 0 && next_y < windowHeight)
+    if(next_y - player.width/2 > 50 && next_y + player.width/2 < windowHeight)
     {
         player.y += moveY * 3*player.move_speed;
     }
@@ -186,15 +508,20 @@ function drawPlayer()
 function spawnBaddie()
 {    
     const spawn_point = generageSpawnPoint();
+    const randomIndex = Math.floor(Math.random() * waves[player.wave-1].baddies.length)
+    const baddie_stats = baddie_list[waves[player.wave-1].baddies[randomIndex]];
+
     game.baddies.push(
         {
+            name: waves[player.wave-1].baddies[randomIndex],
             x : spawn_point.x,
             y : spawn_point.y,
-            width: 20,
-            height: 20,
-            move_speed: 2,
-            hp: 8,
-            damage: 1,
+            width: 0,
+            height: 0,
+            move_speed: baddie_stats.move_speed,
+            hp: baddie_stats.hp,
+            damage: baddie_stats.damage,
+            money: baddie_stats.money,
             flash_timer: 0
         }
     )
@@ -207,7 +534,7 @@ function generageSpawnPoint()
     do {
       // Generate random coordinates within the canvas
       spawnX = random(width);
-      spawnY = random(height);
+      spawnY = random(50, height);
       // Calculate the distance between player and spawn point
       distance = dist(spawnX, spawnY, player.x, player.y);
     } while (distance < 300); // Keep generating until distance is at least 100 units
@@ -218,6 +545,15 @@ function drawBaddies()
 {
     for (const baddie of game.baddies)
     {
+        //spawn animation
+        if(baddie.width < baddie_list[baddie.name].width)
+        {
+            baddie.width += baddie_list[baddie.name].width/50;
+        }
+        if(baddie.height < baddie_list[baddie.name].height)
+        {
+            baddie.height +=  baddie_list[baddie.name].height/50;
+        }
         // Calculate the direction vector from baddie to player
         let directionX = player.x - baddie.x;
         let directionY = player.y - baddie.y;
@@ -258,8 +594,6 @@ function drawBaddies()
         }
         stroke(255, 0, 0);
         rect(baddie.x, baddie.y, baddie.width, baddie.height);
-
-
     }
 }
 
@@ -267,33 +601,62 @@ function fireGuns()
 {
     for (const gun of player.weapons)
     {
-        if (gun.fireCD == 0)
+        if (gun.fireCD <= 0)
         {
             const closest_baddie = findClosestBaddie();
             // Calculate the direction vector from baddie to player
-            let directionX = closest_baddie.x - player.x;
-            let directionY = closest_baddie.y - player.y;
+            let directionX = closest_baddie.x - gun.x;
+            let directionY = closest_baddie.y - gun.y;
 
             // Calculate the magnitude (distance) of the direction vector
-            const magnitude = dist(player.x, player.y, closest_baddie.x, closest_baddie.y);
+            const magnitude = dist(gun.x, gun.y, closest_baddie.x, closest_baddie.y);
             // Normalize the direction vector to get a unit vector
             directionX /= magnitude;
             directionY /= magnitude;
+            
+            if(gun.name === 'smg')
+            {
+                game.player_bullets.push(
+                    {
+                        x: gun.x,
+                        y: gun.y,
+                        damage: gun.damage,
+                        hp: gun.hp,
+                        speed: 4,
+                        xvel:  directionX * gun.move_speed,
+                        yvel: directionY * gun.move_speed,
+                        width: gun.width,
+                        height: gun.height,
+                        range: gun.range
+                    }
+                )
+            }
 
-            game.player_bullets.push(
+            //handle shot gun
+            if(gun.name === 'shot_gun')
+            {             
+                const spreadAngle = PI;
+                for (let i = 0; i < gun.bullets_per_shot; i++)
                 {
-                    x: player.x,
-                    y: player.y,
-                    damage: gun.damage,
-                    hp: gun.hp,
-                    speed: 4,
-                    xvel:  directionX * gun.move_speed,
-                    yvel: directionY * gun.move_speed,
-                    width: gun.width,
-                    height: gun.height
+                    const angle = random(-spreadAngle, spreadAngle);
+                    
+                    game.player_bullets.push(
+                        {
+                            x: gun.x,
+                            y: gun.y,
+                            damage: gun.damage * player.damage,
+                            hp: gun.hp,
+                            speed: 4,
+                            xvel: cos(angle) + directionX * gun.move_speed,
+                            yvel: sin(angle) + directionY * gun.move_speed,
+                            width: gun.width,
+                            height: gun.height,
+                            range: gun.range
+                        }
+                    )
                 }
-            )
-            gun.fireCD = gun.firerate;
+            }
+            gun.fireCD = gun.firerate / player.attack_speed;
         }
         else
         {
@@ -310,11 +673,24 @@ function drawBullets()
     {
         bullet.x += bullet.xvel;
         bullet.y += bullet.yvel;
+        bullet.range -= 1;
+        if(bullet.range <= 0)
+        {
+            bullet.height -= 0.25;
+            bullet.width -= 0.25;
+            if(bullet.height < 0 || bullet.width < 0)
+            {
+                bulletsToRemove.push(bullet_index);                
+            }
+        }
 
         //check out of bounds
         if(bullet.x < 0 || bullet.x > windowWidth || bullet.y < 0 || bullet.y > windowHeight)
         {
-            bulletsToRemove.push(bullet_index);
+            if (!bulletsToRemove.includes(bullet_index))
+            {
+                bulletsToRemove.push(bullet_index);
+            }
         }
         else
         {
@@ -328,15 +704,41 @@ function drawBullets()
                     //hit
                     baddie.hp -=  bullet.damage;
                     baddie.flash_timer = game.flash_timer;
+                    if(baddie.hp > 0)
+                    {
+                        playSound(hit_sound, 'hit_sound');
+                    }
+
+                    
+
                     if (baddie.hp <= 0)
                     {
-                        baddiesToRemove.push(baddie_index);
-                        createDebree(baddie.x, baddie.y, baddie.width*4);
+                        if (!baddiesToRemove.includes(baddie_index))
+                        {
+                            if(baddie.name === 'mini_square')
+                            {
+                                playSound(death_small_sound, 'death_small_sound');
+                            }
+                            else
+                            {
+                                playSound(death_sound, 'death_sound');
+                            }
+                            
+
+                            baddiesToRemove.push(baddie_index);
+                            player.money += baddie.money;
+                            if(player.super !== player.max_super && game.super_duration === 0)
+                                player.super++;
+                            createDebree(baddie.x, baddie.y, baddie.width*4);
+                        }
                     }
                     bullet.hp -= 1;
                     if (bullet.hp == 0)
                     {
-                        bulletsToRemove.push(bullet_index);
+                        if (!bulletsToRemove.includes(bullet_index))
+                        {
+                            bulletsToRemove.push(bullet_index);
+                        }
                     }
                 }
             }
@@ -378,15 +780,14 @@ function createDebree(p_x, p_y, width)
 {
     for (let i = 40; i > 0; i --)
     {
-        let xs = random(-5, 5);
         debree =
         {
-            width: width/10,
-            height: width/10,
+            width: width/15 +2,
+            height: width/15 +2,
             x: p_x + i,
             y: p_y + i,
-            xspeed: xs,
-            yspeed: random(-5, 5),
+            xspeed: random(-4, 4),
+            yspeed: random(-4, 4),
             color: color(255, random(0,120), random(0,120))
         }
         game.debrees.push(debree);
@@ -414,3 +815,132 @@ function drawDebree()
 		}
 	}
 }
+
+function drawGuns()
+{
+    for (const [gun_index, gun] of player.weapons.entries())
+    {
+        const orbitX = player.x + orbitRadius * cos(radians(angle+(gun_index * 200)));
+        const orbitY = player.y + orbitRadius * sin(radians(angle+(gun_index * 200)));
+        ellipse(orbitX, orbitY, 10, 10);
+        gun.x = orbitX;
+        gun.y = orbitY;
+        angle += 1;
+    }
+}
+
+function updateWaveTimer() {
+    if (game.wave_timer > 0) {
+        game.wave_timer--;
+    }
+    if (game.super_duration > 0)
+    {
+        game.super_duration--;
+        //super over
+        if(game.super_duration === 0)
+        {
+            switchToSuperSong(super_themes[isPlaying.theme_playing_index], themes[isPlaying.theme_playing_index])
+            player.attack_speed /= 2;
+            player.damage /= 2;
+            player.move_speed /= 2;
+        }
+    }
+  }
+
+function playSound(sound, sound_string) {
+    if(isPlaying[sound_string] <= 3)
+    {
+        isPlaying[sound_string]++;
+        sound.play();
+    }
+  }
+
+  function startTheme() {
+    // Start playing the audio
+    themes[0].play();
+    isPlaying.theme_playing_index = 0;
+  }
+
+  function playNextTheme() {
+    if(player.money > 400)
+    {
+        if(game.super_duration > 0)
+        {
+            super_themes[4].play();
+        }
+        else
+        {
+            themes[4].play();
+        }
+        
+        isPlaying.theme_playing_index = 4;
+    }
+    if(player.money > 300)
+    {
+        if(game.super_duration > 0)
+        {
+            super_themes[3].play();
+        }
+        else
+        {
+            themes[3].play();
+        }
+        
+        isPlaying.theme_playing_index = 3;
+    }
+
+    if(player.money > 200)
+    {
+        if(game.super_duration > 0)
+        {
+            super_themes[2].play();
+        }
+        else
+        {
+            themes[2].play();
+        }
+        
+        isPlaying.theme_playing_index = 2;
+    }
+
+    else if(player.money > 100)
+    {
+        if(game.super_duration > 0)
+        {
+            super_themes[1].play();
+        }
+        else
+        {
+            themes[1].play();
+        }
+        isPlaying.theme_playing_index = 1;
+    }
+
+    else
+    {
+        if(game.super_duration > 0)
+        {
+            super_themes[0].play();
+        }
+        else
+        {
+            themes[0].play();
+        }
+        isPlaying.theme_playing_index = 0;
+    }
+  }
+
+
+  function switchToSuperSong(currentSong, newSong) {
+    // Get the current playback position of the current song
+    const currentPosition = currentSong.seek();
+  
+    // Pause the current song
+    currentSong.pause();
+    
+    // Start the new song
+    newSong.play();
+  
+    // Set the playback position of the new song
+    newSong.seek(currentPosition);
+  }
