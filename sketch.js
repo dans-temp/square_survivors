@@ -142,12 +142,14 @@ let uiCanvas;
 let graident_changer = 0;
 
 let hit_sound;
+let super_hit_sound;
 let death_sound;
 let font;
 
 
 const isPlaying = {
     hit_sound: 0,
+    super_hit_sound: 0,
     death_sound: 0,
     death_small_sound: 0,
     theme_playing_index: 0,
@@ -161,7 +163,7 @@ function preload()
     themes.push( 
         new Howl({
 			src: ['assets/music/theme_1.wav'],
-			volume: 0.12,
+			volume: 0.14,
             autoplay: false,
             onend: function() {
                 playNextTheme();
@@ -171,7 +173,7 @@ function preload()
     themes.push( 
         new Howl({
             src: ['assets/music/theme_2.wav'],
-            volume: 0.12,
+            volume: 0.14,
             autoplay: false,
             onend: function() {
                 playNextTheme();
@@ -262,7 +264,7 @@ function preload()
 
     hit_sound = new Howl({
         src: ['assets/soundfx/hit.wav'],
-        volume: 0.5,
+        volume: 0.3,
         onend: function() {
             isPlaying.hit_sound --;  
       }
@@ -284,10 +286,28 @@ function preload()
       }
     });
 
+    super_kick = new Howl({
+        src: ['assets/soundfx/super_kick.mp3'],
+        volume: 0.4
+    });
+
+    smg = new Howl({
+        src: ['assets/soundfx/smg.mp3'],
+        volume: 0.00
+    });
+
+    super_hit = new Howl({
+        src: ['assets/soundfx/super_hit.mp3'],
+        volume: 0.03,
+        onend: function() {
+            isPlaying.super_hit_sound --;  
+      }
+    });
+
     player.x = windowWidth/2;
     player.y = windowHeight/2;
 
-    // font = loadFont('/Bungee-Regular.ttf');
+    // font = loadFont('Bungee-Regular.ttf');
     
 }
 
@@ -436,6 +456,7 @@ function drawPlayer()
     //spacebar is down
     if (keyIsDown(32) && player.super === player.max_super)
     {
+        super_kick.play();
         player.super = 0;
         game.super_duration += player.super_duration;
         player.attack_speed *= 2;
@@ -616,6 +637,7 @@ function fireGuns()
             
             if(gun.name === 'smg')
             {
+                smg.play();
                 game.player_bullets.push(
                     {
                         x: gun.x,
@@ -706,7 +728,14 @@ function drawBullets()
                     baddie.flash_timer = game.flash_timer;
                     if(baddie.hp > 0)
                     {
-                        playSound(hit_sound, 'hit_sound');
+                        if(game.super_duration === 0)
+                        {
+                            playSound(hit_sound, 'hit_sound');
+                        }
+                        else
+                        {
+                            playSound(super_hit_sound, 'super_hit_sound');
+                        }
                     }
 
                     
@@ -875,7 +904,7 @@ function playSound(sound, sound_string) {
         
         isPlaying.theme_playing_index = 4;
     }
-    if(player.money > 300)
+    else if(player.money > 300)
     {
         if(game.super_duration > 0)
         {
@@ -888,8 +917,7 @@ function playSound(sound, sound_string) {
         
         isPlaying.theme_playing_index = 3;
     }
-
-    if(player.money > 200)
+    else if(player.money > 200)
     {
         if(game.super_duration > 0)
         {
