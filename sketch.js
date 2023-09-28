@@ -1,4 +1,5 @@
 const game = {
+    state: 'game',
     baddies: [],
     player_bullets: [],
     baddie_bullets: [],
@@ -23,7 +24,7 @@ const player = {
     dash_duration: 10,
     dash_cd: 0,
     dash_cd_timer: 100,
-    wave: 3,
+    wave: 1,
     invince: 0,
     super: 0,
     max_super: 10,
@@ -71,12 +72,17 @@ const player = {
 const waves = [
     {
         max_baddies: 4,
-        timer: 20,
+        timer: 2,
         baddies: ['mini_square']
     },
     {
         max_baddies: 6,
-        timer: 25,
+        timer: 2,
+        baddies: ['mini_square', 'mini_square', 'mini_square', 'reg_square']
+    },
+    {
+        max_baddies: 6,
+        timer: 2,
         baddies: ['mini_square', 'mini_square', 'mini_square', 'reg_square']
     },
     {
@@ -153,9 +159,8 @@ const isPlaying = {
     death_sound: 0,
     death_small_sound: 0,
     theme_playing_index: 0,
+    level_complete: false
 }
-
-
 
 function preload()
 {
@@ -163,7 +168,7 @@ function preload()
     themes.push( 
         new Howl({
 			src: ['assets/music/theme_1.wav'],
-			volume: 0.14,
+			volume: 0.12,
             autoplay: false,
             onend: function() {
                 playNextTheme();
@@ -173,7 +178,7 @@ function preload()
     themes.push( 
         new Howl({
             src: ['assets/music/theme_2.wav'],
-            volume: 0.14,
+            volume: 0.12,
             autoplay: false,
             onend: function() {
                 playNextTheme();
@@ -183,7 +188,7 @@ function preload()
     themes.push( 
         new Howl({
             src: ['assets/music/theme_3.wav'],
-            volume: 0.12,
+            volume: 0.10,
             autoplay: false,
             onend: function() {
                 playNextTheme();
@@ -193,7 +198,7 @@ function preload()
     themes.push( 
         new Howl({
             src: ['assets/music/theme_4.wav'],
-            volume: 0.12,
+            volume: 0.10,
             autoplay: false,
             onend: function() {
                 playNextTheme();
@@ -203,7 +208,7 @@ function preload()
     themes.push( 
         new Howl({
             src: ['assets/music/theme_5.wav'],
-            volume: 0.12,
+            volume: 0.10,
             autoplay: false,
             onend: function() {
                 playNextTheme();
@@ -234,7 +239,7 @@ function preload()
     super_themes.push( 
         new Howl({
             src: ['assets/music/super_theme_3.wav'],
-            volume: 0.12,
+            volume: 0.10,
             autoplay: false,
             onend: function() {
                 playNextTheme();
@@ -244,7 +249,7 @@ function preload()
     super_themes.push( 
         new Howl({
             src: ['assets/music/super_theme_4.wav'],
-            volume: 0.12,
+            volume: 0.10,
 
             autoplay: false,
             onend: function() {
@@ -255,7 +260,7 @@ function preload()
     super_themes.push( 
         new Howl({
             src: ['assets/music/super_theme_5.wav'],
-            volume: 0.12,
+            volume: 0.10,
             autoplay: false,
             onend: function() {
                 playNextTheme();
@@ -296,7 +301,7 @@ function preload()
         volume: 0.00
     });
 
-    super_hit = new Howl({
+    super_hit_sound = new Howl({
         src: ['assets/soundfx/super_hit.mp3'],
         volume: 0.03,
         onend: function() {
@@ -304,10 +309,15 @@ function preload()
       }
     });
 
+    level_complete = new Howl({
+        src: ['assets/soundfx/level_complete.mp3'],
+        volume: 0.7
+    });
+
     player.x = windowWidth/2;
     player.y = windowHeight/2;
 
-    // font = loadFont('Bungee-Regular.ttf');
+    font = loadFont('Bungee-Regular.ttf');
     
 }
 
@@ -317,106 +327,57 @@ function setup()
     uiCanvas = createGraphics(windowWidth, 50);
 	rectMode(CENTER);
     game.wave_timer = waves[player.wave -1].timer;
-    // textFont(font);
+    textFont(font);
+    uiCanvas.textFont(font);
     setTimeout(startTheme, 1000);
-    setInterval(updateWaveTimer, 1000);    
-    
+    setInterval(updateWaveTimer, 1000);       
 }
 
 
 function draw()
 {
-    
-    // Draw the health bar in the UI canvas
-    uiCanvas.background(50);
-    uiCanvas.noStroke();
-
-    uiCanvas.fill(100, 0, 0);
-    uiCanvas.rect(50, 10, 300, uiCanvas.height - 20);
-
-    uiCanvas.fill(255, 0, 0); // Red color for health bar
-    uiCanvas.rect(55, 15, 290 * (player.hp/player.max_hp), uiCanvas.height - 30);
-
-    uiCanvas.textSize(20);
-    uiCanvas.textAlign(CENTER, CENTER);
-    uiCanvas.fill(255); 
-    uiCanvas.text("HP: " + player.hp, 200, 25);
-
-    //ui for the wave timer
-    uiCanvas.textSize(20);
-    uiCanvas.textAlign(CENTER, CENTER);
-    uiCanvas.fill(255); 
-    uiCanvas.text("Wave " + player.wave + " Timer: " + game.wave_timer + "                       " +
-    "Money: " + player.money, uiCanvas.width / 2, uiCanvas.height / 2);
-
-    //super bar
-    uiCanvas.fill(0, 25, 75);
-    uiCanvas.rect(uiCanvas.width - 350, 10, 300, uiCanvas.height - 20);
-
-    //graident for when super is full
-    if(player.super === player.max_super)
-    {
-        graident_changer ++;
-        if (graident_changer > 255)
+    if(game.state === 'game')
+    {        
+        if(game.super_duration > 0)
         {
-            graident_changer = 0;
+            background(0, 0, 0, 25);
         }
-        const gradientX = uiCanvas.width - 345;
-        const gradientY = 15;
-        const gradientWidth = 290;
-        const gradientHeight = uiCanvas.height - 30;
-      
-        const startColor = color(0+graident_changer, 75, 200-graident_changer); // Blue color for the start of the gradient
-        const endColor = color(255-graident_changer, 0+graident_changer, 0); // Red color for the end of the gradient
-      
-        // Loop through the gradient horizontally and interpolate colors
-        for (let x = gradientX; x < gradientX + gradientWidth; x++) {
-          const inter = map(x, gradientX, gradientX + gradientWidth, 0, 1);
-          const c = lerpColor(startColor, endColor, inter);
-          uiCanvas.stroke(c);
-          uiCanvas.line(x, gradientY, x, gradientY + gradientHeight);
+        else
+        {
+            background(255, 255, 255);
         }
-
-        uiCanvas.textAlign(CENTER, CENTER);
-        uiCanvas.fill(255);
-        uiCanvas.text("Press SPACE to Super", uiCanvas.width - 200, 25);
+        if(game.baddies.length < waves[player.wave - 1].max_baddies)
+        {
+            spawnBaddie();
+        }
+        drawDebree();
+        drawBaddies();
+        drawPlayer();
+        fireGuns();
+        drawGuns();
+        drawBullets();
+        // Draw the UI canvas at the top of the main canvas
+        drawUI();
     }
-    else if (game.super_duration > 0)
+    else if (game.state === 'shop')
     {
-        uiCanvas.fill(255); 
-        uiCanvas.text("Super Duration: " + game.super_duration, uiCanvas.width - 200, 25);
+        showShop();
     }
-    else
+    else if (game.state === 'wave complete')
     {
-        uiCanvas.fill(0, 75, 200); // Blue color for super bar
-        uiCanvas.rect(uiCanvas.width - 345, 15, 290 * (player.super/player.max_super), uiCanvas.height - 30);
-    
-        uiCanvas.textAlign(CENTER, CENTER);
-        uiCanvas.fill(255); 
-        uiCanvas.text("Super: " + Math.floor((player.super/player.max_super)* 100) + "%", uiCanvas.width - 200, 25);
+        waveComplete();
     }
-    
-    if(game.super_duration > 0)
-    {
-        background(0, 0, 0, 25);
+    // Check if the game is running on a mobile device
+    if (isMobileDevice()) {
+        background(220);
+        // Display a message or take action to inform the user
+        fill(255, 0, 0);
+        textSize(32);
+        textAlign(CENTER, CENTER);
+        text("Not supported on mobile devices.", width / 2, height / 2);
+        uiCanvas = null;
+        noLoop(); // Stop the game loop
     }
-    else
-    {
-        background(255, 255, 255);
-    }
-
-    if(game.baddies.length < waves[player.wave - 1].max_baddies)
-    {
-        spawnBaddie();
-    }
-    drawDebree();
-    drawBaddies();
-    drawPlayer();
-    fireGuns();
-    drawGuns();
-    drawBullets();
-    // Draw the UI canvas at the top of the main canvas
-    image(uiCanvas, 0, 0);
 }
 
 
@@ -861,6 +822,11 @@ function drawGuns()
 function updateWaveTimer() {
     if (game.wave_timer > 0) {
         game.wave_timer--;
+        if(game.wave_timer === 0)
+        {
+            drawUI();
+            game.state = 'wave complete';
+        }
     }
     if (game.super_duration > 0)
     {
@@ -971,4 +937,260 @@ function playSound(sound, sound_string) {
   
     // Set the playback position of the new song
     newSong.seek(currentPosition);
+  }
+
+
+  function drawUI()
+  {
+    // Draw the health bar in the UI canvas
+    uiCanvas.background(50);
+    uiCanvas.noStroke();
+
+    uiCanvas.fill(100, 0, 0);
+    uiCanvas.rect(50, 10, 300, uiCanvas.height - 20);
+
+    uiCanvas.fill(255, 0, 0); // Red color for health bar
+    uiCanvas.rect(55, 15, 290 * (player.hp/player.max_hp), uiCanvas.height - 30);
+
+    uiCanvas.textSize(20);
+    uiCanvas.textAlign(CENTER, CENTER);
+    uiCanvas.fill(255); 
+    uiCanvas.text("HP: " + player.hp, 200, 24);
+
+    //ui for the wave timer
+    uiCanvas.textSize(20);
+    uiCanvas.textAlign(CENTER, CENTER);
+    uiCanvas.fill(255); 
+    uiCanvas.text("Wave " + player.wave + " Timer: " + game.wave_timer + "                       " +
+    "Money: " + player.money, uiCanvas.width / 2, uiCanvas.height / 2);
+
+    //super bar
+    uiCanvas.fill(0, 25, 75);
+    uiCanvas.rect(uiCanvas.width - 350, 10, 300, uiCanvas.height - 20);
+
+    //graident for when super is full
+    if(player.super === player.max_super)
+    {
+        graident_changer ++;
+        if (graident_changer > 255)
+        {
+            graident_changer = 0;
+        }
+        const gradientX = uiCanvas.width - 345;
+        const gradientY = 15;
+        const gradientWidth = 290;
+        const gradientHeight = uiCanvas.height - 30;
+    
+        const startColor = color(0+graident_changer, 75, 200-graident_changer); // Blue color for the start of the gradient
+        const endColor = color(255-graident_changer, 0+graident_changer, 0); // Red color for the end of the gradient
+    
+        // Loop through the gradient horizontally and interpolate colors
+        for (let x = gradientX; x < gradientX + gradientWidth; x++) {
+        const inter = map(x, gradientX, gradientX + gradientWidth, 0, 1);
+        const c = lerpColor(startColor, endColor, inter);
+        uiCanvas.stroke(c);
+        uiCanvas.line(x, gradientY, x, gradientY + gradientHeight);
+        }
+
+        uiCanvas.textAlign(CENTER, CENTER);
+        uiCanvas.fill(255);
+        uiCanvas.text("Press SPACE to Super", uiCanvas.width - 200, 24);
+    }
+    else if (game.super_duration > 0)
+    {
+        uiCanvas.fill(255); 
+        uiCanvas.text("Super Duration: " + game.super_duration, uiCanvas.width - 200, 24);
+    }
+    else
+    {
+        uiCanvas.fill(0, 75, 200); // Blue color for super bar
+        uiCanvas.rect(uiCanvas.width - 345, 15, 290 * (player.super/player.max_super), uiCanvas.height - 30);
+    
+        uiCanvas.textAlign(CENTER, CENTER);
+        uiCanvas.fill(255); 
+        uiCanvas.text("Super: " + Math.floor((player.super/player.max_super)* 100) + "%", uiCanvas.width - 200, 24);
+    }
+    image(uiCanvas, 0, 0);
+  }
+
+  function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  }
+
+  //garbage code!  dont look here
+  let xPosLeft = -400;
+  let xPosRight = undefined;
+  let colorMod = 0;
+  let color_up = true;
+  let waveCompleteText = "WAVE COMPLETE";
+  let timeout_called = false;
+
+  function waveComplete() {
+
+    textAlign(LEFT, LEFT);
+    if(xPosRight === undefined)
+    {
+        xPosRight = width -200 ;
+    }
+    // Animate text sliding in
+    if (xPosLeft < width / 2 - textWidth(waveCompleteText) / 2) {
+        xPosLeft += 15; // Adjust the sliding speed as needed
+    }
+    else
+    {
+        xPosLeft = width / 2 - textWidth(waveCompleteText) / 2;
+    }
+    if (xPosRight > width / 2 - textWidth(waveCompleteText) / 2) {
+        xPosRight -= 15; // Adjust the sliding speed as needed
+    }
+    else 
+    {
+        if(!isPlaying.level_complete)
+        {
+            
+            level_complete.play();
+            isPlaying.level_complete = true;
+        }
+        xPosRight= width / 2 - textWidth(waveCompleteText) / 2
+    }
+    if (colorMod >= 255)
+    {
+        color_up = false;
+    }
+    else if (colorMod <= 0)
+    {
+        color_up = true;
+    }
+    if (color_up)
+    {
+        colorMod++;
+    }
+    else
+    {
+        colorMod -= 2;
+    }
+    // Create gradient fill for the text
+    let gradientFill = lerpColor(color(colorMod,255,0), color(0,colorMod,255), map(xPosLeft, -400, width / 2, 0, 1));
+
+    // Apply the gradient fill to the text
+    fill(gradientFill);
+
+    // Draw "WAVE COMPLETE" text at the current xPosLeft
+    textSize(72);
+    text(waveCompleteText, xPosRight, height / 2);
+    text(waveCompleteText, xPosLeft, height / 2);
+
+    if(xPosRight === width / 2 - textWidth(waveCompleteText) / 2 && !timeout_called)
+    {
+        timeout_called = true;
+        setTimeout(function () {
+
+            game.state = 'shop';
+            isPlaying.level_complete = false;
+            player.hp = player.max_hp;
+            xPosLeft = -400;
+            xPosRight = width -200;
+            timeout_called = false;
+        
+        }, 2000);
+    }
+  }
+
+
+  function showShop() {
+
+    textAlign(CENTER, CENTER);
+    background(255);
+  
+    textSize(72);
+    stroke(17, 84, 171);
+    strokeWeight(6); // Set border thickness
+    fill(24, 120, 245);
+    // Draw SHOP title
+    text('SHOP', width / 2, 100);
+  
+    // Reroll button
+    textSize(32);
+    // Check if the mouse is inside the Reroll button
+    if (mouseX >= width/2 - (width/6) / 2 &&
+        mouseX <= width/2 + (width/6) / 2 &&
+        mouseY >= 170 - height/15/2 &&
+        mouseY <= 170 + height/15/2
+    ) {
+        fill(0, 0, 255); // Highlight the box in a different shade of blue on hover
+        if (mouseIsPressed) {
+            // reroll();
+        }
+    }
+    else
+    {
+        fill(24, 120, 245);
+    }
+    rect(width/2, 170, width/6, height/15);
+    fill(255);
+    text('Reroll', width/2, 168);
+  
+    // Draw item boxes
+    for (let i = 1; i <= 3; i++) {
+      let x = width / 4 * i;
+      let y = height / 2;
+
+
+        // Check if the mouse is inside the item box
+        if (mouseX >= x - (width/4 - 10) / 2 &&
+            mouseX <= x + (width/4 - 10) / 2 &&
+            mouseY >= y + 20 - y/2 &&
+            mouseY <= y + 20 + y/2
+        ) {
+            fill(0, 0, 255); // Highlight the box in a different shade of blue on hover
+            if (mouseIsPressed) {
+                // Mouse is pressed, call the buyItem function for the clicked item
+                // buyItem(i);
+
+            }
+        }
+        else
+        {
+            fill(24, 120, 245);
+        }
+  
+  
+      // Outside box
+      rect(x, y + 20, width/4 - 10, y);
+      // Inside box
+      fill(255); // Set text color to white
+      rect(x, y + y/15, width/5 - 10, height/2.5);
+  
+      fill(255); // Set text color to white
+      textSize(24);
+      text('Item ' + i, x, y - y/2.5);
+    }
+  
+    // Next wave button
+    textSize(32);
+
+    // Check if the mouse is inside the Next Wave button
+    if (mouseX >= width/2 - (width/5) / 2 &&
+        mouseX <= width/2 + (width/5) / 2 &&
+        mouseY >= height - 100 - height/10 &&
+        mouseY <= height - 100 + height/10
+    ) {
+    fill(0, 0, 255); // Highlight the box in a different shade of blue on hover
+    if (mouseIsPressed) {
+        player.wave ++;
+        game.state = 'game';
+        game.wave_timer = waves[player.wave-1].timer;
+    }
+    }
+    else
+    {
+        fill(24, 120, 245);
+    }
+    rect(width/2, height - 100, width/5, height/10);
+    fill(255);
+    text('Next Wave', width/2, height - 100);
+
+    
+  
+    drawUI();
   }
