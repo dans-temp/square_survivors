@@ -7,7 +7,34 @@ const game = {
     flash_timer: 5,
     wave_timer: 0,
     super_duration: 0
-}
+};
+
+const guns = {
+    smg: {
+        name: "smg",
+        firerate: 30,
+        fireCD: 0,
+        damage: 1,
+        hp: 1,
+        width: 5,
+        height: 5,
+        move_speed: 8,
+        range: 30,
+        bullets_per_shot: 1
+    },
+    shot_gun: {
+        name: "shot_gun",
+        firerate: 100,
+        fireCD: 0,
+        damage: 1,
+        hp: 1,
+        width: 5,
+        height: 5,
+        move_speed: 7,
+        range: 15,
+        bullets_per_shot: 6
+    }
+};
 
 const player = {
     x: 0,
@@ -16,10 +43,10 @@ const player = {
     width: 30,
     hp: 5,
     max_hp: 5,
-    money: 0,
+    money: 50,
     move_speed: 1,
     attack_speed: 1,
-    damage: 1,
+    damage: 0.5,
     dash: 0,
     dash_duration: 10,
     dash_cd: 0,
@@ -27,70 +54,63 @@ const player = {
     wave: 1,
     invince: 0,
     super: 0,
-    max_super: 10,
     super_duration: 5,
+    max_super: 10,
+    welth: 1,
+    welth_in_super: 1,
+    luck: 0,
     weapons: [
-        {
-            name: "shot_gun",
-            firerate: 80,
-            fireCD: 0,
-            damage: 1,
-            hp: 1,
-            width: 5,
-            height: 5,
-            move_speed: 7,
-            range: 15,
-            bullets_per_shot: 6
-        },
-        {
-            name: "smg",
-            firerate: 10,
-            fireCD: 0,
-            damage: 1,
-            hp: 1,
-            width: 5,
-            height: 5,
-            move_speed: 8,
-            range: 30,
-            bullets_per_shot: 1
-        },
-        {
-            name: "smg",
-            firerate: 10,
-            fireCD: 0,
-            damage: 1,
-            hp: 1,
-            width: 5,
-            height: 5,
-            move_speed: 8,
-            range: 30,
-            bullets_per_shot: 1
-        }
+        {...guns.shot_gun}
     ]
-}
+};
 
 const waves = [
     {
         max_baddies: 4,
-        timer: 2,
+        timer: 15,
         baddies: ['mini_square']
     },
     {
         max_baddies: 6,
-        timer: 2,
-        baddies: ['mini_square', 'mini_square', 'mini_square', 'reg_square']
-    },
-    {
-        max_baddies: 6,
-        timer: 2,
-        baddies: ['mini_square', 'mini_square', 'mini_square', 'reg_square']
+        timer: 20,
+        baddies: ['mini_square']
     },
     {
         max_baddies: 8,
+        timer: 25,
+        baddies: ['mini_square', 'mini_square', 'mini_square', 'reg_square']
+    },
+    {
+        max_baddies: 12,
         timer: 30,
         baddies: ['mini_square', 'mini_square', 'mini_square', 'reg_square']
     },
-]
+    {
+        max_baddies: 20,
+        timer: 35,
+        baddies: ['mini_square', 'mini_square', 'mini_square', 'reg_square']
+    },
+    {
+        max_baddies: 40,
+        timer: 40,
+        baddies: ['mini_square', 'mini_square', 'mini_square', 'reg_square']
+    },
+    {
+        max_baddies: 80,
+        timer: 40,
+        baddies: ['mini_square', 'mini_square', 'mini_square', 'reg_square']
+    },
+    {
+        max_baddies: 160,
+        timer: 40,
+        baddies: ['mini_square', 'mini_square', 'mini_square', 'reg_square']
+    },
+    {
+        max_baddies: 320,
+        timer: 40,
+        baddies: ['mini_square', 'mini_square', 'mini_square', 'reg_square']
+    },
+];
 
 const baddie_list = 
 {
@@ -111,34 +131,162 @@ const baddie_list =
         money: 2
     }
     
-}
+};
 
-const guns = {
-    smg: {
-        name: "smg",
-        firerate: 10,
-        fireCD: 0,
-        damage: 1,
-        hp: 1,
-        width: 5,
-        height: 5,
-        move_speed: 8,
-        range: 30,
-        bullets_per_shot: 1
+
+
+const all_items = [
+    {
+        name: "maching gun",
+        key: "smg",
+        type: "weapon",
+        description1: "pew pew pew pew",
+        cost: 25,
+        rarity: 1
     },
-    shot_gun: {
-        name: "shot_gun",
-        firerate: 80,
-        fireCD: 0,
-        damage: 1,
-        hp: 1,
-        width: 5,
-        height: 5,
-        move_speed: 7,
-        range: 15,
-        bullets_per_shot: 6
+    {
+        name: "shot gun",
+        key: "shot_gun",
+        type: "weapon",
+        description1: "chck chck boom!",
+        cost: 25,
+        rarity: 1
+    },
+    {
+        name: "stim pack",
+        type: "upgrade",
+        description1: "+10% attack speed",
+        description2: "+10% damage",
+        cost: 30,
+        rarity: 2,
+        upgrades: [
+            {
+                stat: "attack_speed",
+                value: 0.1
+            },
+            {
+                stat: "damage",
+                value: 0.05
+            }
+        ]
+    },
+    {
+        name: "Give a tip",
+        type: "upgrade",
+        description1: "Better chance for",
+        description2: "rare items in shop",
+        cost: 30,
+        rarity: 2,
+        upgrades: [
+            {
+                stat: "luck",
+                value: 0.5
+            }
+        ]
+    },
+    {
+        name: "Energizer",
+        type: "upgrade",
+        description1: "Super duration",
+        description2: "+ 2 Seconds",
+        cost: 30,
+        rarity: 1,
+        upgrades: [
+            {
+                stat: "super_duration",
+                value: 2
+            }
+        ]
+    },
+    {
+        name: "Blood Rush",
+        type: "upgrade",
+        description1: "Fill up super meter",
+        description2: "10 % faster",
+        cost: 30,
+        rarity: 2,
+        upgrades: [
+            {
+                stat: "function",
+                value: () =>
+                {
+                    player.super *=  0.9;
+                    player.max_super *= 0.9;
+                }
+            }
+        ]
+    },
+    {
+        name: "Steak & Potate",
+        type: "upgrade",
+        description1: "+2 HP",
+        description2: "+10% damage",
+        cost: 30,
+        rarity: 3,
+        upgrades: [
+            {
+                stat: "max_hp",
+                value: 2
+            },
+            {
+                stat: "hp",
+                value: 2
+            },
+            {
+                stat: "damage",
+                value: 0.05
+            },
+        ]
+    },
+    {
+        name: "Side hussle",
+        type: "upgrade",
+        description1: "Earn 10%",
+        description2: "more money",
+        cost: 30,
+        rarity: 3,
+        upgrades: [
+            {
+                stat: "welth",
+                value: 0.1
+            }
+        ]
+    },
+    {
+        name: "The Gig",
+        type: "upgrade",
+        description1: "Earn double the",
+        description2: "money while in super",
+        cost: 30,
+        rarity: 4,
+        upgrades: [
+            {
+                stat: "welth_in_super",
+                value: 2
+            }
+        ],
+        quantity: 1
     }
-}
+];
+
+const shop = {
+    items: [],
+  
+    generateShopItems: function() {
+      // Clear existing items
+      this.items = [];
+  
+      // Populate the shop with random items based on rarity
+      while (this.items.length < 3) {
+        const randomIndex = Math.floor(Math.random() * all_items.length);
+        const randomItem = all_items[randomIndex];
+        if (!this.items.includes(randomItem) && (randomItem.quantity === undefined || randomItem.quantity > 0)) {
+            console.log(randomItem.quantity)
+          this.items.push(randomItem);
+        }
+      }
+    }
+  };
 
 const themes = [];
 const super_themes = [];
@@ -148,17 +296,23 @@ let uiCanvas;
 let graident_changer = 0;
 
 let hit_sound;
-let super_hit_sound;
+let super_death_sound;
 let death_sound;
 let font;
+let invalid;
+let smg;
+let shot_gun;
 
 
 const isPlaying = {
     hit_sound: 0,
-    super_hit_sound: 0,
+    smg: 0,
+    shot_gun: 0,
+    super_death_sound: 0,
     death_sound: 0,
     death_small_sound: 0,
     theme_playing_index: 0,
+    invalid: 0,
     level_complete: false
 }
 
@@ -219,7 +373,7 @@ function preload()
     super_themes.push( 
         new Howl({
             src: ['assets/music/super_theme_1.wav'],
-            volume: 0.12,
+            volume: 0.10,
             autoplay: false,
             onend: function() {
                 playNextTheme();
@@ -229,7 +383,7 @@ function preload()
     super_themes.push( 
         new Howl({
             src: ['assets/music/super_theme_2.wav'],
-            volume: 0.12,
+            volume: 0.10,
             autoplay: false,
             onend: function() {
                 playNextTheme();
@@ -239,7 +393,7 @@ function preload()
     super_themes.push( 
         new Howl({
             src: ['assets/music/super_theme_3.wav'],
-            volume: 0.10,
+            volume: 0.08,
             autoplay: false,
             onend: function() {
                 playNextTheme();
@@ -249,7 +403,7 @@ function preload()
     super_themes.push( 
         new Howl({
             src: ['assets/music/super_theme_4.wav'],
-            volume: 0.10,
+            volume: 0.08,
 
             autoplay: false,
             onend: function() {
@@ -260,7 +414,7 @@ function preload()
     super_themes.push( 
         new Howl({
             src: ['assets/music/super_theme_5.wav'],
-            volume: 0.10,
+            volume: 0.08,
             autoplay: false,
             onend: function() {
                 playNextTheme();
@@ -293,25 +447,49 @@ function preload()
 
     super_kick = new Howl({
         src: ['assets/soundfx/super_kick.mp3'],
-        volume: 0.4
+        volume: 0.2
     });
 
     smg = new Howl({
         src: ['assets/soundfx/smg.mp3'],
-        volume: 0.00
+        volume: 0.08,
+        onend: function() {
+            isPlaying.smg --;  
+      }
     });
 
-    super_hit_sound = new Howl({
-        src: ['assets/soundfx/super_hit.mp3'],
+    shot_gun = new Howl({
+        src: ['assets/soundfx/shot_gun.mp3'],
+        volume: 0.02,
+        onend: function() {
+            isPlaying.shot_gun --;  
+      }
+    });
+
+    super_death_sound = new Howl({
+        src: ['assets/soundfx/super_death.mp3'],
         volume: 0.03,
         onend: function() {
-            isPlaying.super_hit_sound --;  
+            isPlaying.super_death_sound --;  
       }
     });
 
     level_complete = new Howl({
         src: ['assets/soundfx/level_complete.mp3'],
         volume: 0.7
+    });
+
+    upgrade = new Howl({
+        src: ['assets/soundfx/upgrade.mp3'],
+        volume: 2
+    });
+
+    invalid = new Howl({
+        src: ['assets/soundfx/invalid.mp3'],
+        volume: 0.2,
+        onend: function() {
+            isPlaying.invalid --;  
+      }
     });
 
     player.x = windowWidth/2;
@@ -598,7 +776,7 @@ function fireGuns()
             
             if(gun.name === 'smg')
             {
-                smg.play();
+                playSound(smg, 'smg');
                 game.player_bullets.push(
                     {
                         x: gun.x,
@@ -617,7 +795,8 @@ function fireGuns()
 
             //handle shot gun
             if(gun.name === 'shot_gun')
-            {             
+            {
+                playSound(shot_gun, 'shot_gun');             
                 const spreadAngle = PI;
                 for (let i = 0; i < gun.bullets_per_shot; i++)
                 {
@@ -685,45 +864,53 @@ function drawBullets()
                 bullet.y + bullet.height / 2 > baddie.y - baddie.height / 2 &&
                 bullet.y - bullet.height / 2 < baddie.y + baddie.height / 2) {
                     //hit
-                    baddie.hp -=  bullet.damage;
+                    baddie.hp -=  bullet.damage * player.damage;
                     baddie.flash_timer = game.flash_timer;
                     if(baddie.hp > 0)
                     {
-                        if(game.super_duration === 0)
-                        {
-                            playSound(hit_sound, 'hit_sound');
-                        }
-                        else
-                        {
-                            playSound(super_hit_sound, 'super_hit_sound');
-                        }
-                    }
+                        playSound(hit_sound, 'hit_sound');
 
-                    
+                    }
+                  
 
                     if (baddie.hp <= 0)
                     {
                         if (!baddiesToRemove.includes(baddie_index))
                         {
-                            if(baddie.name === 'mini_square')
+                            if(game.super_duration === 0)
                             {
-                                playSound(death_small_sound, 'death_small_sound');
+                                if(baddie.name === 'mini_square')
+                                {
+                                    playSound(death_small_sound, 'death_small_sound');
+                                }
+                                else
+                                {
+                                    playSound(death_sound, 'death_sound');
+                                }
                             }
                             else
                             {
-                                playSound(death_sound, 'death_sound');
-                            }
-                            
+                                playSound(super_death_sound, 'super_death_sound');
+                            }                       
 
                             baddiesToRemove.push(baddie_index);
-                            player.money += baddie.money;
+                            if (game.super_duration > 0)
+                                player.money += (baddie.money * player.welth) * player.welth_in_super;
+                            else
+                                player.money += baddie.money * player.welth;
+
                             if(player.super !== player.max_super && game.super_duration === 0)
+                            {
                                 player.super++;
+                                if(player.super > player.max_super)
+                                    player.super = player.max_super;
+                            }
+                                
                             createDebree(baddie.x, baddie.y, baddie.width*4);
                         }
                     }
                     bullet.hp -= 1;
-                    if (bullet.hp == 0)
+                    if (bullet.hp <= 0)
                     {
                         if (!bulletsToRemove.includes(bullet_index))
                         {
@@ -843,7 +1030,17 @@ function updateWaveTimer() {
   }
 
 function playSound(sound, sound_string) {
-    if(isPlaying[sound_string] <= 3)
+    if(sound_string === 'smg' && isPlaying[sound_string] <= 25)
+    {
+        isPlaying[sound_string]++;
+        sound.play();
+    }
+    else if(sound_string === 'shot_gun' && isPlaying[sound_string] <= 14)
+    {
+        isPlaying[sound_string]++;
+        sound.play();
+    }
+    else if(isPlaying[sound_string] <= 3)
     {
         isPlaying[sound_string]++;
         sound.play();
@@ -857,7 +1054,7 @@ function playSound(sound, sound_string) {
   }
 
   function playNextTheme() {
-    if(player.money > 400)
+    if(player.wave > 8)
     {
         if(game.super_duration > 0)
         {
@@ -870,7 +1067,7 @@ function playSound(sound, sound_string) {
         
         isPlaying.theme_playing_index = 4;
     }
-    else if(player.money > 300)
+    else if(player.wave > 6)
     {
         if(game.super_duration > 0)
         {
@@ -883,7 +1080,7 @@ function playSound(sound, sound_string) {
         
         isPlaying.theme_playing_index = 3;
     }
-    else if(player.money > 200)
+    else if(player.wave > 4)
     {
         if(game.super_duration > 0)
         {
@@ -897,7 +1094,7 @@ function playSound(sound, sound_string) {
         isPlaying.theme_playing_index = 2;
     }
 
-    else if(player.money > 100)
+    else if(player.wave > 2)
     {
         if(game.super_duration > 0)
         {
@@ -962,7 +1159,7 @@ function playSound(sound, sound_string) {
     uiCanvas.textAlign(CENTER, CENTER);
     uiCanvas.fill(255); 
     uiCanvas.text("Wave " + player.wave + " Timer: " + game.wave_timer + "                       " +
-    "Money: " + player.money, uiCanvas.width / 2, uiCanvas.height / 2);
+    "Money: " + parseInt(player.money), uiCanvas.width / 2, uiCanvas.height / 2);
 
     //super bar
     uiCanvas.fill(0, 25, 75);
@@ -1084,14 +1281,26 @@ function playSound(sound, sound_string) {
     {
         timeout_called = true;
         setTimeout(function () {
-
+            shop.generateShopItems();
             game.state = 'shop';
             isPlaying.level_complete = false;
             player.hp = player.max_hp;
             xPosLeft = -400;
             xPosRight = width -200;
             timeout_called = false;
-        
+            //end the super
+            if(game.super_duration > 0)
+            {
+                game.super_duration = 0;
+                switchToSuperSong(super_themes[isPlaying.theme_playing_index], themes[isPlaying.theme_playing_index])
+                player.attack_speed /= 2;
+                player.damage /= 2;
+                player.move_speed /= 2;
+            }
+           
+            game.baddies = [];
+            game.player_bullets = [];
+            game.debrees = [];
         }, 2000);
     }
   }
@@ -1114,56 +1323,99 @@ function playSound(sound, sound_string) {
     // Check if the mouse is inside the Reroll button
     if (mouseX >= width/2 - (width/6) / 2 &&
         mouseX <= width/2 + (width/6) / 2 &&
-        mouseY >= 170 - height/15/2 &&
-        mouseY <= 170 + height/15/2
+        mouseY >= 165 - height/15/2 &&
+        mouseY <= 165 + height/15/2
     ) {
         fill(0, 0, 255); // Highlight the box in a different shade of blue on hover
         if (mouseIsPressed) {
-            // reroll();
+            shop.generateShopItems();
         }
     }
     else
     {
         fill(24, 120, 245);
     }
-    rect(width/2, 170, width/6, height/15);
+    rect(width/2, 165, width/6, height/15);
     fill(255);
-    text('Reroll', width/2, 168);
+    text('Reroll', width/2, 163);
   
     // Draw item boxes
     for (let i = 1; i <= 3; i++) {
       let x = width / 4 * i;
       let y = height / 2;
-
-
-        // Check if the mouse is inside the item box
-        if (mouseX >= x - (width/4 - 10) / 2 &&
-            mouseX <= x + (width/4 - 10) / 2 &&
-            mouseY >= y + 20 - y/2 &&
-            mouseY <= y + 20 + y/2
-        ) {
-            fill(0, 0, 255); // Highlight the box in a different shade of blue on hover
-            if (mouseIsPressed) {
-                // Mouse is pressed, call the buyItem function for the clicked item
-                // buyItem(i);
-
-            }
-        }
-        else
+      if(shop.items[i-1].name !== 'sold')
+      {
+ 
+          // Check if the mouse is inside the item box
+          if (mouseX >= x - (width/4 - 10) / 2 &&
+              mouseX <= x + (width/4 - 10) / 2 &&
+              mouseY >= y + 20 - y/2 &&
+              mouseY <= y + 20 + y/2
+          ) {
+              fill(0, 0, 255); // Highlight the box in a different shade of blue on hover
+              if (mouseIsPressed) {
+                  // Mouse is pressed, call the buyItem function for the clicked item
+                  buyItem(i-1);
+              }
+          }
+          else
+          {
+              fill(24, 120, 245);
+          }
+    
+    
+        // Outside box
+        rect(x, y + 20, width/4 - 10, y);
+        // Inside box
+        fill(255); // Set text color to white
+        rect(x, y + y/15, width/5 - 10, height/2.5);
+    
+        if (shop.items[i-1].rarity === 1)
         {
-            fill(24, 120, 245);
+            stroke(155);
+        }
+        else if (shop.items[i-1].rarity === 2)
+        {
+            stroke(17, 84, 171);
+        }
+        else if (shop.items[i-1].rarity === 3)
+        {
+            stroke(117, 0, 207);
+        }
+        else if (shop.items[i-1].rarity === 4)
+        {
+            stroke(179, 122, 0);
+        }
+        
+        fill(255); // Set text color to white
+        textSize(24);
+        text(shop.items[i-1].name, x, y - y/2.5);
+  
+        //item desc
+        textSize(20);
+        strokeWeight(4);
+        text(shop.items[i-1].description1, x, y - 80);
+        if (shop.items[i-1].description2 !== undefined)
+        {
+          text(shop.items[i-1].description2, x, y - 50);
         }
   
   
-      // Outside box
-      rect(x, y + 20, width/4 - 10, y);
-      // Inside box
-      fill(255); // Set text color to white
-      rect(x, y + y/15, width/5 - 10, height/2.5);
-  
-      fill(255); // Set text color to white
-      textSize(24);
-      text('Item ' + i, x, y - y/2.5);
+        strokeWeight(12);
+        stroke(235, 204, 52);
+        text("cost: " + shop.items[i-1].cost, x, y + 130);
+        strokeWeight(6);
+        stroke(17, 84, 171);
+
+      }
+      else
+      {
+        rect(x, y + 20, width/4 - 10, y);
+        //sold out
+        textSize(48);
+        strokeWeight(6);
+        text("SOLD OUT", x, y - 80);
+      }
     }
   
     // Next wave button
@@ -1189,8 +1441,46 @@ function playSound(sound, sound_string) {
     rect(width/2, height - 100, width/5, height/10);
     fill(255);
     text('Next Wave', width/2, height - 100);
-
-    
   
     drawUI();
   }
+
+
+function buyItem(itemIndex)
+{
+    const item = shop.items[itemIndex];
+    if(player.money >= item.cost)
+    {
+        if(item.quantity !== undefined)
+        {
+            item.quantity --;
+        }
+        
+        if (item.type === 'upgrade')
+        {
+            for (const upgrade of item.upgrades)
+            {
+                if(upgrade.stat === 'function')
+                {
+                    upgrade.value();
+                }
+                else 
+                {
+                    player[upgrade.stat] += upgrade.value;
+                }
+            }
+        }
+        else if (item.type === 'weapon')
+        {
+            player.weapons.push({...guns[item.key]});
+        }
+    
+        shop.items[itemIndex] = {name: 'sold'};
+        player.money -= item.cost;
+        upgrade.play();
+    }
+    else
+    {
+        playSound(invalid, 'invalid');
+    }
+}
