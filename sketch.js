@@ -1,4 +1,4 @@
-const game = {
+let game = {
     state: 'game',
     baddies: [],
     player_bullets: [],
@@ -6,8 +6,11 @@ const game = {
     debrees: [],
     flash_timer: 5,
     wave_timer: 0,
-    super_duration: 0
+    super_duration: 0,
+    boss_1_spawned: false
 };
+
+const game_defaults = {...game};
 
 const guns = {
     smg: {
@@ -20,7 +23,8 @@ const guns = {
         height: 5,
         move_speed: 8,
         range: 30,
-        bullets_per_shot: 1
+        bullets_per_shot: 1,
+        color: [90, 25, 194]
     },
     shot_gun: {
         name: "shot_gun",
@@ -32,11 +36,13 @@ const guns = {
         height: 5,
         move_speed: 7,
         range: 15,
-        bullets_per_shot: 6
+        bullets_per_shot: 6,
+        color: [31, 184, 159]
     }
 };
 
-const player = {
+let player = {
+    wave: 1,
     x: 0,
     y: 0,
     height: 30,
@@ -44,14 +50,14 @@ const player = {
     hp: 5,
     max_hp: 5,
     money: 50,
-    move_speed: 1,
+    move_speed: 0.7,
     attack_speed: 1,
     damage: 0.5,
+    bonus_bullet_hp : 0,
     dash: 0,
     dash_duration: 10,
     dash_cd: 0,
     dash_cd_timer: 100,
-    wave: 1,
     invince: 0,
     super: 0,
     super_duration: 5,
@@ -60,9 +66,12 @@ const player = {
     welth_in_super: 1,
     luck: 0,
     weapons: [
-        {...guns.shot_gun}
-    ]
+        {...guns.smg}
+    ],
+    stacked_bullets: false
 };
+
+const player_defualts = {...player};
 
 const waves = [
     {
@@ -171,19 +180,32 @@ const all_items = [
         ]
     },
     {
-        name: "Give a tip",
+        name: "New Boot Goofin'",
         type: "upgrade",
-        description1: "Better chance for",
-        description2: "rare items in shop",
+        description1: "Move Speed + 10%",
         cost: 30,
         rarity: 2,
         upgrades: [
             {
-                stat: "luck",
-                value: 0.5
+                stat: "move_speed",
+                value: 0.1
             }
         ]
     },
+    // {
+    //     name: "Give a tip",
+    //     type: "upgrade",
+    //     description1: "Better chance for",
+    //     description2: "rare items in shop",
+    //     cost: 30,
+    //     rarity: 2,
+    //     upgrades: [
+    //         {
+    //             stat: "luck",
+    //             value: 0.5
+    //         }
+    //     ]
+    // },
     {
         name: "Energizer",
         type: "upgrade",
@@ -253,6 +275,20 @@ const all_items = [
         ]
     },
     {
+        name: "Piercing rounds",
+        type: "upgrade",
+        description1: "Bullets go though",
+        description2: "an additional enemy",
+        cost: 30,
+        rarity: 3,
+        upgrades: [
+            {
+                stat: "bonus_bullet_hp",
+                value: 1
+            }
+        ]
+    },
+    {
         name: "The Gig",
         type: "upgrade",
         description1: "Earn double the",
@@ -263,6 +299,21 @@ const all_items = [
             {
                 stat: "welth_in_super",
                 value: 2
+            }
+        ],
+        quantity: 1
+    },
+    {
+        name: "Pierce Down",
+        type: "upgrade",
+        description1: "Bullets damage enemies",
+        description2: "that are stacked",
+        cost: 30,
+        rarity: 4,
+        upgrades: [
+            {
+                stat: "stacked_bullets",
+                value: true
             }
         ],
         quantity: 1
@@ -281,7 +332,6 @@ const shop = {
         const randomIndex = Math.floor(Math.random() * all_items.length);
         const randomItem = all_items[randomIndex];
         if (!this.items.includes(randomItem) && (randomItem.quantity === undefined || randomItem.quantity > 0)) {
-            console.log(randomItem.quantity)
           this.items.push(randomItem);
         }
       }
@@ -492,6 +542,11 @@ function preload()
       }
     });
 
+    game_over = new Howl({
+        src: ['assets/soundfx/game_over.wav'],
+        volume: 0.2
+    });
+
     player.x = windowWidth/2;
     player.y = windowHeight/2;
 
@@ -524,7 +579,7 @@ function draw()
         {
             background(255, 255, 255);
         }
-        if(game.baddies.length < waves[player.wave - 1].max_baddies)
+        if(game.baddies.length < waves[player.wave - 1].max_baddies && player.wave !== 5)
         {
             spawnBaddie();
         }
@@ -534,6 +589,7 @@ function draw()
         fireGuns();
         drawGuns();
         drawBullets();
+        situationalChecks();
         // Draw the UI canvas at the top of the main canvas
         drawUI();
     }
@@ -544,6 +600,13 @@ function draw()
     else if (game.state === 'wave complete')
     {
         waveComplete();
+    }
+    else if (game.state === 'game over')
+    {
+        drawBullets();
+        drawDebree();
+        gameOver();
+        drawUI();
     }
     // Check if the game is running on a mobile device
     if (isMobileDevice()) {
@@ -680,6 +743,7 @@ function spawnBaddie()
             height: 0,
             move_speed: baddie_stats.move_speed,
             hp: baddie_stats.hp,
+            max_hp: baddie_stats.hp,
             damage: baddie_stats.damage,
             money: baddie_stats.money,
             flash_timer: 0
@@ -706,13 +770,16 @@ function drawBaddies()
     for (const baddie of game.baddies)
     {
         //spawn animation
-        if(baddie.width < baddie_list[baddie.name].width)
+        if(baddie.name != 'boss 1')
         {
-            baddie.width += baddie_list[baddie.name].width/50;
-        }
-        if(baddie.height < baddie_list[baddie.name].height)
-        {
-            baddie.height +=  baddie_list[baddie.name].height/50;
+            if(baddie.width < baddie_list[baddie.name].width)
+            {
+                baddie.width += baddie_list[baddie.name].width/50;
+            }
+            if(baddie.height < baddie_list[baddie.name].height)
+            {
+                baddie.height +=  baddie_list[baddie.name].height/50;
+            }
         }
         // Calculate the direction vector from baddie to player
         let directionX = player.x - baddie.x;
@@ -736,9 +803,13 @@ function drawBaddies()
             {
                 player.invince = 50;
                 player.hp --;
-                if (player.hp <= 0)
+                if (player.hp < 1)
                 {
-                    console.log('game over');
+                    game_over.play();
+                    game.state = 'game over';
+                    createDebree(player.x, player.y, player.width*4);
+                    themes[isPlaying.theme_playing_index].stop();
+                    super_themes[isPlaying.theme_playing_index].stop();
                 }
             }
         }
@@ -750,7 +821,13 @@ function drawBaddies()
         }
         else
         {
-            fill(255, 255 - (baddie.hp * 30), baddie.hp * 30);
+            if(baddie.name === 'mini_square')
+            {
+                fill(255, 255 - (baddie.hp * 30), baddie.hp * 30);
+            }
+            else
+                fill(255, 255 - (baddie.hp/baddie.max_hp * 170), baddie.hp/baddie.max_hp * 170);
+            
         }
         stroke(255, 0, 0);
         rect(baddie.x, baddie.y, baddie.width, baddie.height);
@@ -764,6 +841,10 @@ function fireGuns()
         if (gun.fireCD <= 0)
         {
             const closest_baddie = findClosestBaddie();
+            if (closest_baddie === null)
+            {
+                return;
+            }
             // Calculate the direction vector from baddie to player
             let directionX = closest_baddie.x - gun.x;
             let directionY = closest_baddie.y - gun.y;
@@ -782,13 +863,14 @@ function fireGuns()
                         x: gun.x,
                         y: gun.y,
                         damage: gun.damage,
-                        hp: gun.hp,
+                        hp: gun.hp + player.bonus_bullet_hp,
                         speed: 4,
                         xvel:  directionX * gun.move_speed,
                         yvel: directionY * gun.move_speed,
                         width: gun.width,
                         height: gun.height,
-                        range: gun.range
+                        range: gun.range,
+                        color: gun.color
                     }
                 )
             }
@@ -813,7 +895,8 @@ function fireGuns()
                             yvel: sin(angle) + directionY * gun.move_speed,
                             width: gun.width,
                             height: gun.height,
-                            range: gun.range
+                            range: gun.range,
+                            color: gun.color
                         }
                     )
                 }
@@ -831,6 +914,8 @@ function drawBullets()
 {
     const bulletsToRemove = [];
     const baddiesToRemove = [];
+    stroke(17, 84, 171);    
+    outerLoop:
     for (const [bullet_index, bullet] of game.player_bullets.entries())
     {
         bullet.x += bullet.xvel;
@@ -857,8 +942,10 @@ function drawBullets()
         else
         {
             //hit dectection
-            for (const [baddie_index, baddie] of game.baddies.entries())
+            innerLoop:
+            for (let baddie_index = game.baddies.length-1; baddie_index >= 0; baddie_index--)
             {
+                const baddie = game.baddies[baddie_index];
                 if (bullet.x + bullet.width / 2 > baddie.x - baddie.width / 2 &&
                 bullet.x - bullet.width / 2 < baddie.x + baddie.width / 2 &&
                 bullet.y + bullet.height / 2 > baddie.y - baddie.height / 2 &&
@@ -872,7 +959,6 @@ function drawBullets()
 
                     }
                   
-
                     if (baddie.hp <= 0)
                     {
                         if (!baddiesToRemove.includes(baddie_index))
@@ -917,15 +1003,23 @@ function drawBullets()
                             bulletsToRemove.push(bullet_index);
                         }
                     }
+                    //stacked bullets needs fixed
+                    if(!player.stacked_bullets)
+                    {
+                        break innerLoop;
+                    }
                 }
             }
         }
+        // strokeWeight(1);
+        // stroke(bullet.color[0], bullet.color[1], bullet.color[2]);
         ellipse(bullet.x, bullet.y, bullet.width, bullet.height)
     }
+
     //remove dead bullets and baddies
     for (const bullet_index of bulletsToRemove) {
         game.player_bullets.splice(bullet_index, 1); // Remove one element at the given index
-      }
+    }
     for (const baddies_index of baddiesToRemove) {
         game.baddies.splice(baddies_index, 1); // Remove one element at the given index
     }
@@ -967,6 +1061,19 @@ function createDebree(p_x, p_y, width)
             yspeed: random(-4, 4),
             color: color(255, random(0,120), random(0,120))
         }
+        if(game.state === 'game over')
+        {
+            debree =
+            {
+                width: width/15 +2,
+                height: width/15 +2,
+                x: p_x + i,
+                y: p_y + i,
+                xspeed: random(-4, 4),
+                yspeed: random(-4, 4),
+                color: color(random(0,120), random(0,120), 255)
+            }
+        }
         game.debrees.push(debree);
     }
 }
@@ -999,6 +1106,7 @@ function drawGuns()
     {
         const orbitX = player.x + orbitRadius * cos(radians(angle+(gun_index * 200)));
         const orbitY = player.y + orbitRadius * sin(radians(angle+(gun_index * 200)));
+        stroke(gun.color[0], gun.color[1], gun.color[2]);
         ellipse(orbitX, orbitY, 10, 10);
         gun.x = orbitX;
         gun.y = orbitY;
@@ -1007,7 +1115,7 @@ function drawGuns()
 }
 
 function updateWaveTimer() {
-    if (game.wave_timer > 0) {
+    if (game.wave_timer > 0 && game.state === 'game') {
         game.wave_timer--;
         if(game.wave_timer === 0)
         {
@@ -1223,7 +1331,6 @@ function playSound(sound, sound_string) {
   let timeout_called = false;
 
   function waveComplete() {
-
     textAlign(LEFT, LEFT);
     if(xPosRight === undefined)
     {
@@ -1231,24 +1338,18 @@ function playSound(sound, sound_string) {
     }
     // Animate text sliding in
     if (xPosLeft < width / 2 - textWidth(waveCompleteText) / 2) {
-        xPosLeft += 15; // Adjust the sliding speed as needed
+        xPosLeft += 40; // Adjust the sliding speed as needed
     }
     else
     {
         xPosLeft = width / 2 - textWidth(waveCompleteText) / 2;
     }
     if (xPosRight > width / 2 - textWidth(waveCompleteText) / 2) {
-        xPosRight -= 15; // Adjust the sliding speed as needed
+        xPosRight -= 40; // Adjust the sliding speed as needed
     }
     else 
     {
-        if(!isPlaying.level_complete)
-        {
-            
-            level_complete.play();
-            isPlaying.level_complete = true;
-        }
-        xPosRight= width / 2 - textWidth(waveCompleteText) / 2
+        xPosRight = width / 2 - textWidth(waveCompleteText) / 2
     }
     if (colorMod >= 255)
     {
@@ -1279,6 +1380,11 @@ function playSound(sound, sound_string) {
 
     if(xPosRight === width / 2 - textWidth(waveCompleteText) / 2 && !timeout_called)
     {
+
+
+        level_complete.play();
+
+
         timeout_called = true;
         setTimeout(function () {
             shop.generateShopItems();
@@ -1302,6 +1408,105 @@ function playSound(sound, sound_string) {
             game.player_bullets = [];
             game.debrees = [];
         }, 2000);
+    }
+  }
+
+
+
+
+
+  let yPosUP = -200;
+  let yPosDown = undefined;
+  let colorModGO = 0;
+  let color_upGO = true;
+  let gameOverText = "GAME OVER";
+
+  function gameOver() {
+    stroke(222, 61, 24);
+    strokeWeight(4);
+    textAlign(CENTER);
+    if(yPosDown === undefined)
+    {
+        yPosDown = height +200 ;
+    }
+    // Animate text sliding in
+    if (yPosUP < height / 2) {
+        yPosUP += 10; // Adjust the sliding speed as needed
+    }
+    else
+    {
+        yPosUP = height / 2;
+    }
+    if (yPosDown > height / 2) {
+        yPosDown -= 10; // Adjust the sliding speed as needed
+    }
+    else 
+    {
+        yPosDown= height / 2
+    }
+    if (colorMod >= 255)
+    {
+        color_up = false;
+    }
+    else if (colorMod <= 0)
+    {
+        color_up = true;
+    }
+    if (color_up)
+    {
+        colorMod++;
+    }
+    else
+    {
+        colorMod -= 2;
+    }
+    // Create gradient fill for the text
+    let gradientFill = lerpColor(color(255-colorMod,0,0), color(colorMod,255-colorMod,0), map(yPosUP, -400, width / 2, 0, 1));
+
+    // Apply the gradient fill to the text
+    fill(gradientFill);
+
+    // Draw "game over" text at the current yPosUP
+    textSize(72);
+    text(gameOverText, width/2, yPosDown);
+    text(gameOverText, width/2, yPosUP);
+
+    if(yPosUP >= height / 2 )
+    {
+        // Main Menu button
+        textSize(32);
+
+        // Check if the mouse is inside the Next Wave button
+        if (mouseX >= width/2 - (width/5) / 2 &&
+            mouseX <= width/2 + (width/5) / 2 &&
+            mouseY >= height - 100 - height/10 &&
+            mouseY <= height - 100 + height/10
+        ) {
+        fill(24, 80, 255); // Highlight the box in a different shade of blue on hover
+        if (mouseIsPressed) {
+            player = {...player_defualts};
+            game = {...game_defaults};
+            game.baddies = [];
+            game.player_bullets = [];
+            debrees = [];
+            yPosUP = -200;
+            yPosDown = undefined;
+            player.x = windowWidth/2;
+            player.y = windowHeight/2;
+            YPosDown = width -200;
+            game.state = 'game';
+            game.wave_timer = waves[player.wave-1].timer;
+            themes[0].play();
+            super_kick.play();
+        }
+        }
+        else
+        {
+            fill(24, 120, 245);
+        }
+        rect(width/2, height - 110, width/5, 75);
+        fill(255);
+        text('Try Again', width/2, height - 105);
     }
   }
 
@@ -1482,5 +1687,31 @@ function buyItem(itemIndex)
     else
     {
         playSound(invalid, 'invalid');
+    }
+}
+
+
+function situationalChecks()
+{
+    console.log(game.boss_1_spawned)
+    //BOSS 1
+    if(player.wave === 5 && !game.boss_1_spawned)
+    {
+        game.boss_1_spawned = true;
+        game.baddies.push(
+            {
+                name: 'boss 1',
+                x : width/2,
+                y : -height/2 + 20,
+                width: width,
+                height: height,
+                move_speed: 0.3,
+                hp: 200,
+                max_hp: 100,
+                damage: 2,
+                money: 100,
+                flash_timer: 0
+            }
+        )
     }
 }
